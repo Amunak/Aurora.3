@@ -140,7 +140,7 @@
 /mob/living/carbon/human/bst/can_inject(var/mob/user, var/error_msg, var/target_zone)
 	to_chat(user, SPAN_ALERT("The [src] disarms you before you can inject them."))
 	user.drop_item()
-	return 0
+	return INJECT_DENIED
 
 /mob/living/carbon/human/bst/binarycheck()
 	return 1

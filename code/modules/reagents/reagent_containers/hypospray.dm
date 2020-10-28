@@ -44,17 +44,6 @@
 	volume = 30
 	time = 0
 
-/obj/item/reagent_containers/hypospray/attack(var/mob/M, var/mob/user, target_zone)
-	. = ..()
-	var/mob/living/carbon/human/H = M
-	if(istype(H))
-		user.visible_message(SPAN_WARNING("\The [user] is trying to inject \the [M] with \the [src]!"), SPAN_NOTICE("You are trying to inject \the [M] with \the [src]."))
-		var/inj_time = time
-		if(armorcheck && H.run_armor_check(target_zone,"melee",0,"Your armor slows down the injection!","Your armor slows down the injection!"))
-			inj_time += 6 SECONDS
-		if(!do_mob(user, M, inj_time))
-			return 1
-
 /obj/item/reagent_containers/hypospray/update_icon()
 	cut_overlays()
 
@@ -70,7 +59,6 @@
 		add_overlay(filling)
 
 /obj/item/reagent_containers/hypospray/afterattack(var/mob/M, var/mob/user, proximity)
-
 	if (!istype(M))
 		return ..()
 
@@ -81,19 +69,13 @@
 		to_chat(user, SPAN_WARNING("\The [src] is empty."))
 		return
 
-	user.setClickCooldown(DEFAULT_QUICK_COOLDOWN)
-	user.do_attack_animation(M)
-	to_chat(user, SPAN_NOTICE("You inject \the [M] with \the [src]."))
-	to_chat(M, SPAN_NOTICE("You feel a tiny prick!"))
-	playsound(src, 'sound/items/hypospray.ogg',25)
+	var/trans = standard_inject_into(M, user, injtime = 0.2 SECONDS, var/can_inject_armor = true)
+	if(!trans)
+		return
 
-	if(M.reagents)
-		var/contained = reagentlist()
-		var/temp = reagents.get_temperature()
-		var/trans = reagents.trans_to_mob(M, amount_per_transfer_from_this, CHEM_BLOOD)
-		admin_inject_log(user, M, src, contained, temp, trans)
-		to_chat(user, SPAN_NOTICE("[trans] units injected. [reagents.total_volume] units remaining in \the [src]."))
-
+	playsound(src, 'sound/items/hypospray.ogg', 25)
+	user.visible_message(SPAN_NOTICE("[user] injects [M] with their hypospray!"))
+	to_chat(user, SPAN_NOTICE("[trans] units injected. [reagents.total_volume] units remaining in \the [src]."))
 	update_icon()
 	return TRUE
 

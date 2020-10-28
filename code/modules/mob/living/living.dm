@@ -380,9 +380,11 @@ default behaviour is:
 			return 1
 	return 0
 
-
-/mob/living/proc/can_inject()
-	return 1
+#define INJECT_DENIED 0
+#define INJECT_ALLOWED 1
+#define INJECT_WITH_DELAY 2
+/mob/living/proc/can_inject(var/mob/user, var/error_msg, var/target_zone = null, var/list/allow_suits = FALSE)
+	return INJECT_ALLOWED
 
 /mob/living/proc/get_organ_target()
 	var/mob/shooter = src

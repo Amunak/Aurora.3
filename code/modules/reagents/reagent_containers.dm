@@ -134,7 +134,6 @@
 	return 1
 
 /obj/item/reagent_containers/proc/standard_splash_obj(var/mob/user, var/target)
-
 	if(user.a_intent != I_HURT)
 		return
 
@@ -190,7 +189,6 @@
 	playsound(user.loc, 'sound/items/drink.ogg', rand(10, 50), 1)
 
 /obj/item/reagent_containers/proc/standard_feed_mob(var/mob/user, var/mob/living/target) // This goes into attack
-
 	if(!istype(target))
 		return 0
 
@@ -285,3 +283,45 @@
 	playsound(src, 'sound/effects/pour.ogg', 25, 1)
 	to_chat(user, "<span class='notice'>You transfer [trans] units of the solution to [target].</span>")
 	return 1
+
+ // This goes into afterattack for syringes/hypos
+ // Does not handle fluid transfer to other reagent_containers or success messages
+ // Returns amount of injected liquid (0 on failure)
+/obj/item/reagent_containers/proc/standard_inject_into(var/mob/target, var/mob/user, var/visible_name = null, var/injtime = 2 SECONDS, var/can_inject_armor = FALSE)
+	if(!target || !user)
+		return 0
+
+	if(!visible_name)
+		visible_name = name
+
+	var/inject = INJECT_ALLOWED
+	var/mob/living/M = target
+	if(target != user)
+		if(istype(M))
+			inject = M.can_inject(user, error_msg = TRUE, allow_suits = can_inject_armor)
+
+	if(!inject)
+		return 0
+
+	if(inject == INJECT_WITH_DELAY)
+		injtime = injtime * 2
+		var/what = isvaurca(H) ? "carapace" : "suit"
+		if(injtime < 2 SECONDS)
+			user.visible_message(SPAN_WARNING("[user] uses the injection port coupling on [target]'s [what] to inject them!"))
+		else
+			user.visible_message(SPAN_WARNING("[user] begins [pick("hunting", "searching", "looking for")] for an injection port on [target]'s [what]!"))
+	else if(injtime > 1 SECOND)
+		user.visible_message(SPAN_WARNING("[user] is trying to inject [target] with [visible_name]!"))
+
+	user.setClickCooldown(DEFAULT_QUICK_COOLDOWN)
+	user.do_attack_animation(target)
+
+	if(!do_mob(user, target, injtime))
+		return 0
+
+	to_chat(target, SPAN_NOTICE("You feel a tiny prick!"))
+	var/contained = reagentlist()
+	var/trans = reagents.trans_to_mob(target, amount_per_transfer_from_this, CHEM_BLOOD)
+	admin_inject_log(user, target, src, contained, reagents.get_temperature(), trans)
+
+	return trans

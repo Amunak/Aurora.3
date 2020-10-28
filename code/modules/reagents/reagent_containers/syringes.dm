@@ -220,61 +220,18 @@
 				to_chat(user, SPAN_NOTICE("[target] is full."))
 				return
 
-			var/mob/living/carbon/human/H = target
-			var/obj/item/organ/external/affected
-			if(istype(H))
-				affected = H.get_organ(user.zone_sel.selecting)
-				if(!affected)
-					to_chat(user, SPAN_DANGER("\The [H] is missing that limb!"))
-					return
-				else if(affected.status & ORGAN_ROBOT)
-					to_chat(user, SPAN_DANGER("You cannot inject a robotic limb."))
-					return
-
-			if(ismob(target) && target != user)
-
-				var/injtime = time //Injecting through a voidsuit takes longer due to needing to find a port.
-
-				if(istype(H))
-					if(H.wear_suit)
-						if(istype(H.wear_suit, /obj/item/clothing/suit/space))
-							injtime = injtime * 2
-						else if(!H.can_inject(user, 1))
-							return
-					if(isvaurca(H))
-						injtime = injtime * 2
-
-				else if(isliving(target))
-
-					var/mob/living/M = target
-					if(!M.can_inject(user, 1))
-						return
-
-				if(injtime == time)
-					user.visible_message(SPAN_WARNING("[user] is trying to inject [target] with [visible_name]!"))
-				else
-					if(isvaurca(H))
-						user.visible_message(SPAN_WARNING("[user] begins hunting for an injection port on [target]'s carapace!"))
-					else
-						user.visible_message(SPAN_WARNING("[user] begins hunting for an injection port on [target]'s suit!"))
-
-				user.setClickCooldown(DEFAULT_QUICK_COOLDOWN)
-				user.do_attack_animation(target)
-
-				if(!do_mob(user, target, injtime))
-					return
-
-				user.visible_message(SPAN_WARNING("[user] injects [target] with the syringe!"))
-
 			var/trans
 			if(ismob(target))
-				var/contained = reagentlist()
-				trans = reagents.trans_to_mob(target, amount_per_transfer_from_this, CHEM_BLOOD)
-				dirty(target, affected)
-				admin_inject_log(user, target, src, contained, reagents.get_temperature(), trans)
+				trans = standard_inject_into(target, user, visible_name, 3 SECONDS, TRUE)
+				if(trans)
+					user.visible_message(SPAN_WARNING("[user] injects [target] with the syringe!"))
+					var/obj/item/organ/external/O = H.get_organ(user.zone.selecting)
+					if(O)
+						dirty(target, O)
 			else
 				trans = reagents.trans_to(target, amount_per_transfer_from_this)
-			to_chat(user, SPAN_NOTICE("You inject [trans] units of the solution. The syringe now contains [src.reagents.total_volume] units."))
+			to_chat(user, SPAN_NOTICE("You inject [trans] units of the solution. \The [name] now contains [src.reagents.total_volume] units."))
+
 			if (reagents.total_volume <= 0 && mode == SYRINGE_INJECT)
 				mode = SYRINGE_DRAW
 				update_icon()

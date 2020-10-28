@@ -28,7 +28,7 @@
 		name = real_name
 		if(mind)
 			mind.name = real_name
-	
+
 	if(species.have_vision_cone)
 		can_have_vision_cone = TRUE
 
@@ -1545,8 +1545,8 @@
 		W.message = message
 		W.add_fingerprint(src)
 
-/mob/living/carbon/human/can_inject(var/mob/user, var/error_msg, var/target_zone)
-	. = 1
+/mob/living/carbon/human/can_inject(var/mob/user, var/error_msg, var/target_zone = null, var/list/allow_suits = FALSE)
+	. = INJECT_ALLOWED
 
 	if(!target_zone)
 		if(!user)
@@ -1557,19 +1557,24 @@
 	var/obj/item/organ/external/affecting = get_organ(target_zone)
 	var/fail_msg
 	if(!affecting)
-		. = 0
+		. = INJECT_DENIED
 		fail_msg = "They are missing that limb."
 	else if (affecting.status & ORGAN_ROBOT)
-		. = 0
+		. = INJECT_DENIED
 		fail_msg = "That limb is robotic."
 	else
 		switch(target_zone)
 			if(BP_HEAD)
 				if(head && head.item_flags & THICKMATERIAL)
-					. = 0
+					. = INJECT_DENIED
 			else
 				if(wear_suit && wear_suit.item_flags & THICKMATERIAL)
-					. = 0
+					if(allow_suits && istype(wear_suit, /obj/item/clothing/suit/space))
+						. = INJECT_WITH_DELAY
+					else
+						. = INJECT_DENIED
+	if(. && isvaurca)
+		. = INJECT_WITH_DELAY
 	if(!. && error_msg && user)
 		if(!fail_msg)
 			fail_msg = "There is no exposed flesh or thin material [target_zone == BP_HEAD ? "on their head" : "on their body"] to inject into."
