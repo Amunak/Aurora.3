@@ -1,0 +1,4 @@
+author: Amunak
+delete-after: True
+changes:
+  - rscadd: "Overhauls the 'comms' system used to communicate between station and centcom."
