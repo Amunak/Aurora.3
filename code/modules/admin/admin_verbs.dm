@@ -49,6 +49,7 @@ var/list/admin_verbs_admin = list(
 	/client/proc/rename_silicon,		//properly renames silicons,
 	/client/proc/manage_silicon_laws,	// Allows viewing and editing silicon laws. ,
 	/client/proc/check_antagonists,
+	/client/proc/comms_panel,
 	/client/proc/dsay,					/*talk in deadchat using our ckey/fakekey*/
 	/client/proc/toggleprayers,			/*toggles prayers on/off*/
 //	/client/proc/toggle_hear_deadcast,	/*toggles whether we hear deadchat*/
@@ -295,6 +296,7 @@ var/list/admin_verbs_hideable = list(
 	/client/proc/jumptomob,
 	/client/proc/jumptoturf,
 	/client/proc/cmd_cciaa_say,
+	/client/proc/comms_panel,
 	/datum/admins/proc/access_news_network,
 	/client/proc/jumptocoord,
 	/client/proc/colorooc,
@@ -419,6 +421,7 @@ var/list/admin_verbs_mod = list(
 	/client/proc/dsay,
 	/datum/admins/proc/show_skills,
 	/datum/admins/proc/show_player_panel,
+	/client/proc/comms_panel,
 	/client/proc/check_antagonists,
 	/client/proc/jobbans,
 	/client/proc/cmd_admin_subtle_message, 	/*send an message to somebody as a 'voice in their head'*/
@@ -609,6 +612,15 @@ var/list/admin_verbs_cciaa = list(
 		var/static/datum/vueui_module/player_panel/global_player_panel = new()
 		global_player_panel.ui_interact(usr)
 	feedback_add_details("admin_verb","PPM") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
+	return
+
+/client/proc/comms_panel()
+	set name = "Comms Panel"
+	set category = "Admin"
+	if(holder)
+		var/static/datum/vueui_module/comms_panel/P = new()
+		P.ui_interact(usr)
+	feedback_add_details("admin_verb","CPA") //If you are copy-pasting this, ensure the 2nd parameter is unique to the new proc!
 	return
 
 
