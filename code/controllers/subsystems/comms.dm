@@ -35,19 +35,17 @@
  * call their various procs to find out how they are doing and modify them if necessary.
  */
 
-#define MAX_MESSAGES_PER_FIRE 10
-
 var/datum/controller/subsystem/comms/SScomms
 
 /datum/controller/subsystem/comms
 	name = "Comms"
+	wait = 13
 	// flags = SS_NO_FIRE | SS_NO_INIT
 
 	var/next_hold_process_time = 0
 
 	// Message lists
-	var/list/datum/message/input_queue = list() // Holds input messages before processing
-	var/list/datum/message/hold_queue = list() // Holds messages waiting for delivery
+	var/list/datum/message/queue = list() // Holds messages waiting for delivery
 	var/list/datum/message/finished = list() // Holds messages that have completely finished processing one way or another
 
 	var/list/datum/message_router/routers = list() // List of all registered routers
@@ -66,31 +64,22 @@ var/datum/controller/subsystem/comms/SScomms
 		RegisterReceiver(R)
 
 /datum/controller/subsystem/comms/fire(resumed)
-	// Process only up to a maximum per fire
-	for(var/i = 0; i < MAX_MESSAGES_PER_FIRE; i++)
-		if(input_queue.len) // first process messages one by one
-			ProcessNewMessage(popleft(input_queue))
+	for(var/datum/message/M in queue) // process queued messages one by one
+		if(!M.ShouldDeliverNow()) // skip over messages that are to be delivered later
 			continue
 
-		if(hold_queue.len) // ...then process hold queue one by one
-			for(var/datum/message/M in hold_queue)
-				if (!M.ShouldDeliverNow()) // skip over messages that are not yet to be delivered
-					continue
-				hold_queue -= M
-				AttemptMessageDelivery(M)
-			continue
+		queue -= M
+		AttemptMessageDelivery(M)
 
-		break
+		// pause after one attempted delivery if there's no time
+		if(MC_TICK_CHECK)
+			return
 
-	// if there are still unprocessed messages, fire normally next time
-	if(input_queue.len)
-		return
-
-	// if there are still messages in hold queue, schedule a wake (otherwise hold queue won't get processed on time)
-	if(hold_queue.len)
+	// if there are still messages in queue, schedule a wake (otherwise they won't get processed on time)
+	if(queue.len)
 		ScheduleWake()
 
-	// finally suspend as we won't be doing anything for a while
+	// since there is nothing to do we can suspend until a new message arrives
 	suspend()
 
 
@@ -111,7 +100,7 @@ var/datum/controller/subsystem/comms/SScomms
 	routers |= E
 
 /datum/controller/subsystem/comms/proc/SubmitMessage(var/datum/message/M)
-	input_queue |= M
+	ProcessNewMessage(M)
 	wake()
 
 
@@ -119,12 +108,12 @@ var/datum/controller/subsystem/comms/SScomms
 
 /datum/controller/subsystem/comms/proc/ProcessNewMessage(var/datum/message/M)
 	// move message to hold queue
-	hold_queue += M
+	queue += M
 
 // Schedules a wake so that we will wake up just as we are supposed to deliver a message
 /datum/controller/subsystem/comms/proc/ScheduleWake()
 	var/when = INFINITY
-	for(var/datum/message/M in hold_queue)
+	for(var/datum/message/M in queue)
 		if(M.deliver < when)
 			when = M.deliver
 	when = max(2 SECONDS, min(when - world.time, 10 MINUTES)) // wake up no sooner than in 2 seconds but no later than in 10 minutes
@@ -139,7 +128,7 @@ var/datum/controller/subsystem/comms/SScomms
 
 	// too soon, hold the message a little longer
 	if (!M.ShouldDeliverNow())
-		hold_queue += M
+		queue += M
 
 	// attempt delivery
 	M.StartDelivery()
@@ -147,7 +136,7 @@ var/datum/controller/subsystem/comms/SScomms
 	if(!receivers.len) // no route found
 		M.AddFailure()
 		if(M.IsDelivering())
-			hold_queue += M
+			queue += M
 		else
 			finished += M
 

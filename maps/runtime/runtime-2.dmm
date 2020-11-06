@@ -81,14 +81,14 @@
 	dir = 5
 	},
 /obj/structure/cable/cyan{
-	d1 = 2;
-	d2 = 8;
-	icon_state = "2-8"
-	},
-/obj/structure/cable/cyan{
 	d1 = 1;
 	d2 = 2;
 	icon_state = "1-2"
+	},
+/obj/structure/cable/cyan{
+	d1 = 2;
+	d2 = 4;
+	icon_state = "2-4"
 	},
 /turf/simulated/floor/tiled{
 	name = "cooled floor";
@@ -300,16 +300,9 @@
 /turf/simulated/floor/tiled,
 /area/construction/Storage)
 "nR" = (
-/obj/machinery/power/apc/super{
-	name = "south bump";
-	pixel_y = -24
-	},
-/obj/structure/cable/cyan{
-	d2 = 4;
-	icon_state = "0-4"
-	},
-/turf/simulated/floor/tiled{
-	name = "cooled floor";
+/obj/machinery/message_router,
+/turf/simulated/floor/bluegrid{
+	name = "cooled mainframe floor";
 	temperature = 278
 	},
 /area/tcommsat/chamber)
@@ -766,6 +759,14 @@
 	pressure_checks = 0;
 	pressure_checks_default = 0;
 	use_power = 1
+	},
+/obj/structure/cable/cyan{
+	d2 = 8;
+	icon_state = "0-8"
+	},
+/obj/machinery/power/apc/super{
+	name = "south bump";
+	pixel_y = -24
 	},
 /turf/simulated/floor/tiled{
 	name = "cooled floor";

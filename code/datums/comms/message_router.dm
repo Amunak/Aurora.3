@@ -11,9 +11,3 @@
 
 /datum/message_router/proc/Routes(var/datum/message/M, var/datum/message_receiver/R)
 	return operating && R.category in routed_categories
-
-/datum/message_router/admin
-	routed_categories = list("Centcom")
-
-/datum/message_router/station
-	routed_categories = list("Station")
