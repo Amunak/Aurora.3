@@ -12,7 +12,7 @@
 	idle_power_usage = 15000
 	active_power_usage = 15000
 
-	var/datum/message_router/station/router
+	var/datum/message_router/router
 
 	component_types = list(
 		/obj/item/circuitboard/message_router,

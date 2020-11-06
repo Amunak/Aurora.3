@@ -10,4 +10,10 @@
 	return ..()
 
 /datum/message_router/proc/Routes(var/datum/message/M, var/datum/message_receiver/R)
-	return operating && R.category in routed_categories
+	if(!operating)
+		return FALSE
+	if(!(R.category in routed_categories))
+		return FALSE
+	if(islist(M.for_categories) && !(R.category in M.for_categories))
+		return FALSE
+	return TRUE

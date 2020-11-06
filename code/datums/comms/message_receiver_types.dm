@@ -4,6 +4,9 @@
 	category = "Centcom"
 	name = "Admin Receiver"
 
+/datum/message_receiver/admin/AcceptsMessage(var/datum/message/M)
+	return istype(M, /datum/message/announcement)
+
 /datum/message_receiver/admin/Receive(var/datum/message/M)
 	var/atom/A = M.sender
 	var/msg = SPAN_WARNING("Receiving Message as [src.name] from <strong>[A?.name] ([key_name(M.sender, 1)])</strong>")
@@ -71,47 +74,9 @@
 	if (!connection)
 		return FALSE
 
-	AM.PrepareBroadcast(M.announcer_name)
-
-	// Shamelessly copied from Radios' Subspace Transmission Code
-	var/datum/signal/signal = new
-	signal.transmission_method = 2 // @TODO change to TRANSMISSION_SUBSPACE after PR#10406 is merged
-	signal.frequency = connection.frequency
-	signal.data = list(
-		// Identity-associated tags:
-		"mob" = AM, // store a reference to the mob
-		"mobtype" = AM.type, 	// the mob's type
-		"realname" = M.announcer_name, // the mob's real name
-		"name" = M.announcer_name,	// the mob's display name
-		"job" = M.jobname,		// the mob's job
-		"key" = "none",			// the mob's key
-		"vmessage" = null, // the message to display if the voice wasn't understood
-		"vname" = M.announcer_name, // the name to display if the voice wasn't understood
-		"vmask" = FALSE,	// 1 if the mob is using a voice gas mask
-
-		"compression" = 0,
-		"message" = M.GetBody(),
-		"connection" = connection,
-		"radio" = null, // stores the radio used for transmission
-		"slow" = 0,
-		"traffic" = 0,
-		"type" = 0, // determines what type of radio input it is: normal broadcast
-		"server" = null,
-		"reject" = 0, // if nonzero, the signal will not be accepted by any broadcasting machinery
-		"level" = null, // position.z, // The source's z level
-		"language" = null
-	)
-
-	//#### Sending the signal to all subspace receivers ####//
-
-	for(var/obj/machinery/telecomms/receiver/R in telecomms_list)
-		R.receive_signal(signal)
-
-	// Allinone can act as receivers.
-	for(var/obj/machinery/telecomms/allinone/R in telecomms_list)
-		R.receive_signal(signal)
-
-	AM.Reset()
-
-	if(!signal.data["done"] /*|| !(position.z in signal.data["level"])*/)
-		log_debug("Radio receiver [name] ([type]) failed delivery. There's nothing we can do.")
+	AM.PrepareBroadcast(M.announcer_name, M.language, null, AM.accent)
+	Broadcast_Message(connection, AM,
+						FALSE, "*garbled radio message*", null,
+						M.GetBody(), M.announcer_name, M.jobname, M.announcer_name, AM.voice_name,
+						4, 0, current_map.station_levels, connection.frequency, "states", AM.default_language)
+	AM.ResetAfterBroadcast()

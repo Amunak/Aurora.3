@@ -5,6 +5,7 @@
 #define STATE_FAILED     5 // Delivery has failed after too many tries - we gave up
 
 /datum/message
+	var/id = null // message ID, assigned by SSComms
 	var/sender // holds sender (whatever that may be - mob, client, mind, null, ...)
 	var/sender_key // holds sender's ckey at time of submission
 	var/state = STATE_NEW
@@ -15,15 +16,18 @@
 	var/stop_retrying_after = 10 MINUTES // when to stop re-trying delivery (from first_delivery_attempt)
 	var/failures = 0 // how many times a delivery failed
 
+	var/for_categories = null
 	var/contents = ""
 
-/datum/message/New(var/sender, var/delay = 1 MINUTE)
+/datum/message/New(var/sender = null, var/delay = 1)
 	src.sender = sender
 	src.sender_key = key_name(sender)
 	src.created_at = world.time
 	src.deliver = world.time + delay
 
 /datum/message/proc/Send()
+	if(src.state != STATE_NEW)
+		return
 	SScomms.SubmitMessage(src)
 
 /datum/message/proc/IsDelivering()

@@ -16,10 +16,8 @@
  * edited or canceled, but it's probably better not to do that once it has been delivered.
  *
  * What happens when you create a Message and submit it (by calling `Message.Send()`):
- * - The message is enqueud in the input queue and the subsystem is told to wake up if it was sleeping.
- * - When awake the messages are first processed from the input queue and moved into the waiting queue.
- * - Depending on when delivery is supposed to happen, the subsystem might sleep until it has something to do.
- * - When awake we go through the waiting queue, looking for messages that are supposed to be delivered.
+ * - The message is processed and put into the message queue and the subsystem is told to wake up if it was sleeping.
+ * - When awake we go through the queue, looking for messages that are supposed to be delivered.
  * - We try to find at least one Router for every Receiver willing to accept the message. If we end up with
  *       even just a single Receiver, the delivery will go through and will be considered successful (even
  *       if you might have wanted to receive the message with multiple Receivers).
@@ -39,17 +37,19 @@ var/datum/controller/subsystem/comms/SScomms
 
 /datum/controller/subsystem/comms
 	name = "Comms"
-	wait = 13
-	// flags = SS_NO_FIRE | SS_NO_INIT
+	wait = 1 // We fire "all the time" except we actually sleep most of the time. This makes sure when there are messages they get processed fast and on time.
 
-	var/next_hold_process_time = 0
+	var/message_id = 0
 
 	// Message lists
-	var/list/datum/message/queue = list() // Holds messages waiting for delivery
-	var/list/datum/message/finished = list() // Holds messages that have completely finished processing one way or another
+	var/list/datum/message/message_queue = list() // Holds messages waiting for delivery
+	var/list/datum/message/messages_finished = list() // Holds messages that have completely finished processing one way or another
 
 	var/list/datum/message_router/routers = list() // List of all registered routers
 	var/list/datum/message_receiver/receivers = list() // List of registered message receivers
+
+/datum/controller/subsystem/comms/stat_entry()
+	..("Q:[message_queue.len] F:[messages_finished.len] R: [routers.len] E: [receivers.len]")
 
 /datum/controller/subsystem/comms/New()
 	NEW_SS_GLOBAL(SScomms)
@@ -63,12 +63,16 @@ var/datum/controller/subsystem/comms/SScomms
 		R.name = department
 		RegisterReceiver(R)
 
+	// register generic receivers
+	RegisterReceiver(new /datum/message_receiver/station/announcement())
+	RegisterReceiver(new /datum/message_receiver/station/radio())
+
 /datum/controller/subsystem/comms/fire(resumed)
-	for(var/datum/message/M in queue) // process queued messages one by one
+	for(var/datum/message/M in message_queue) // process queued messages one by one
 		if(!M.ShouldDeliverNow()) // skip over messages that are to be delivered later
 			continue
 
-		queue -= M
+		message_queue -= M
 		AttemptMessageDelivery(M)
 
 		// pause after one attempted delivery if there's no time
@@ -76,7 +80,7 @@ var/datum/controller/subsystem/comms/SScomms
 			return
 
 	// if there are still messages in queue, schedule a wake (otherwise they won't get processed on time)
-	if(queue.len)
+	if(message_queue.len)
 		ScheduleWake()
 
 	// since there is nothing to do we can suspend until a new message arrives
@@ -107,28 +111,33 @@ var/datum/controller/subsystem/comms/SScomms
 // Private procs handling the messages
 
 /datum/controller/subsystem/comms/proc/ProcessNewMessage(var/datum/message/M)
-	// move message to hold queue
-	queue += M
+	// set message ID
+	M.id = message_id++
+	// move message to queue
+	message_queue += M
+	log_debug("Queued message [M.type]")
 
 // Schedules a wake so that we will wake up just as we are supposed to deliver a message
 /datum/controller/subsystem/comms/proc/ScheduleWake()
 	var/when = INFINITY
-	for(var/datum/message/M in queue)
+	for(var/datum/message/M in message_queue)
 		if(M.deliver < when)
 			when = M.deliver
 	when = max(2 SECONDS, min(when - world.time, 10 MINUTES)) // wake up no sooner than in 2 seconds but no later than in 10 minutes
 
+	log_debug("Scheduling wake to [when/10] seconds")
 	addtimer(CALLBACK(src, .proc/wake), when, TIMER_UNIQUE|TIMER_OVERRIDE|TIMER_NO_HASH_WAIT)
 
 // Attempts to deliver a message
 /datum/controller/subsystem/comms/proc/AttemptMessageDelivery(var/datum/message/M)
 	if(!M.IsDelivering()) // failed, finished or otherwise bad message, move it to finished
-		finished += M
+		messages_finished += M
 		return
 
 	// too soon, hold the message a little longer
 	if (!M.ShouldDeliverNow())
-		queue += M
+		message_queue += M
+		return
 
 	// attempt delivery
 	M.StartDelivery()
@@ -136,11 +145,13 @@ var/datum/controller/subsystem/comms/SScomms
 	if(!receivers.len) // no route found
 		M.AddFailure()
 		if(M.IsDelivering())
-			queue += M
+			message_queue += M // move it back to the queue
 		else
-			finished += M
+			messages_finished += M // message no longer available for delivery (probably failed too many times)
+		return
 
 	M.FinishDelivery()
+	messages_finished += M
 	for(var/datum/message_receiver/R in receivers)
 		try
 			R.Receive(M)
@@ -153,13 +164,13 @@ var/datum/controller/subsystem/comms/SScomms
 	var/list/datum/message_receiver/result = list()
 	// go through all receivers and try to find at least one router for each
 	for(var/datum/message_receiver/R in receivers)
-		if(R.AcceptsMessage(M)) // Receivers can decide to skip messages
+		if(!R.AcceptsMessage(M)) // Receivers can decide to skip messages
+			log_debug("Receiver [R.name] ([R.type]) decided to skip message [M.type]")
 			continue
 		for(var/datum/message_router/E in routers)
 			if(!E.Routes(M, R)) // Routers can decide to not route to a receiver or based on the message
+				log_debug("Router [R.type] decided to skip message [M.type]")
 				continue
 			result += R
 			break // Found one and that's all we need
 	return result
-
-#undef MAX_MESSAGES_PER_FIRE

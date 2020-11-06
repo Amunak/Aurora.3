@@ -460,6 +460,7 @@ var/global/list/default_medbay_channels = list(
 			R.receive_signal(signal)
 
 		// Receiving code can be located in Telecommunications.dm
+		// which is I guess another way to say that signal.data["level"] HERE is not the same as above
 		return signal.data["done"] && (position.z in signal.data["level"])
 
 

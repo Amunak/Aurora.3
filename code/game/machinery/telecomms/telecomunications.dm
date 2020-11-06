@@ -273,7 +273,8 @@ var/global/list/obj/machinery/telecomms/telecomms_list = list()
 				relay_information(signal, "/obj/machinery/telecomms/bus") // Send it to a bus instead, if it's linked to one
 
 /obj/machinery/telecomms/receiver/proc/check_receive_level(datum/signal/signal)
-
+	// level can be either a list or an integer
+	// it should really be just a list but radios use an int and who knows what would break if it was fixed
 	if(signal.data["level"] != listening_level)
 		for(var/obj/machinery/telecomms/hub/H in links)
 			var/list/connected_levels = list()
